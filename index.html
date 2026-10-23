@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El Último Mercado</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#241608;font-family:"Trebuchet MS",Verdana,sans-serif;color:#3a2616}
+#game{position:absolute;left:50%;top:50%;width:1100px;height:650px;transform-origin:center;transform:translate(-50%,-50%) scale(var(--s,1));background:#c9965a;overflow:hidden;border-radius:10px;box-shadow:0 0 0 4px #5a3b20}
+canvas#c{position:absolute;inset:0;display:block}
+h1,h2,h3{font-family:"Palatino Linotype",Palatino,Georgia,serif;margin:0}
+.panel{position:absolute;background:linear-gradient(#f4e6bf,#e8d3a0);border:4px solid #5a3b20;border-radius:8px;box-shadow:inset 0 0 0 2px #8c6a3d,0 4px 10px rgba(0,0,0,.35);padding:8px 10px;font-size:13px}
+#chips{left:10px;top:10px;display:flex;gap:8px;padding:5px 8px}
+.chip{display:flex;align-items:center;gap:5px;font-weight:bold;font-size:15px;min-width:62px}
+#title{left:50%;top:8px;transform:translateX(-50%);text-align:center;padding:4px 18px}
+#title h1{font-size:22px;line-height:1.1}
+#title small{font-size:12px}
+#inflp{right:10px;top:10px;width:230px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 10px}
+#inflp b{font-size:15px}
+#build{left:10px;top:66px;width:138px;display:flex;flex-direction:column;gap:5px}
+#build h3{font-size:15px;margin-bottom:2px}
+.btn{font:inherit;font-size:13px;font-weight:bold;background:#f9efd0;color:#3a2616;border:3px solid #5a3b20;border-radius:6px;padding:5px 6px;cursor:pointer;text-align:left}
+.btn:hover{background:#fff6dc}
+.btn.on{background:#d9a233}
+.btn small{display:block;font-weight:normal;font-size:11px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+#market{right:10px;top:66px;width:230px}
+#market h3,#chart h3{font-size:15px;margin-bottom:4px}
+.mrow{display:flex;justify-content:space-between;align-items:baseline;margin-top:5px;font-weight:bold}
+.mrow em{font-style:normal;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:4px;color:#fff}
+em.bad{background:#a4512b}em.ok{background:#2c7a4a}
+.pr i{font-style:normal;font-size:11px}.pr i.up{color:#a4512b}.pr i.down{color:#2c7a4a}
+.bar{height:7px;background:#cdb787;border-radius:4px;margin-top:2px;overflow:hidden}
+.bar span{display:block;height:100%}
+.bar.o span{background:#2c9aa0}.bar.d span{background:#c0562b}
+.legend{font-size:11px;margin-top:6px;display:flex;gap:10px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:3px;vertical-align:-1px}
+#chart{right:10px;bottom:62px;width:230px}
+#vbars{display:flex;gap:10px;height:84px;align-items:flex-end}
+.grp{flex:1;text-align:center}
+.vb{height:70px;display:flex;gap:3px;align-items:flex-end;justify-content:center;border-bottom:2px solid #5a3b20}
+.vb span{display:block;width:12px;border-radius:3px 3px 0 0;min-height:2px}
+.vb .o{background:#2c9aa0}.vb .d{background:#c0562b}
+.grp small{font-size:10px}
+#bar{left:10px;right:10px;bottom:8px;height:44px;display:flex;align-items:center;gap:12px;padding:4px 12px}
+#news{flex:1;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#day{font-weight:bold;min-width:110px;text-align:right}
+.spd{display:flex;gap:4px}
+.spd .btn{padding:3px 9px;text-align:center}
+#hint{position:absolute;left:50%;bottom:62px;transform:translateX(-50%);background:#3a2616;color:#fff3cf;padding:6px 14px;border-radius:16px;font-weight:bold;font-size:14px;display:none;pointer-events:none}
+.overlay{position:absolute;inset:0;background:rgba(36,22,8,.75);display:flex;align-items:center;justify-content:center;z-index:10}
+.hidden{display:none!important}
+.card{width:640px;max-height:620px;overflow:auto;background:linear-gradient(#f4e6bf,#e8d3a0);border:5px solid #5a3b20;border-radius:10px;padding:22px 26px;box-shadow:inset 0 0 0 2px #8c6a3d}
+.card h2{font-size:28px;margin-bottom:6px}
+.card p{line-height:1.45;margin:8px 0}
+.card ul{margin:6px 0 12px;padding-left:20px;line-height:1.6}
+.row{display:flex;gap:10px;margin-top:12px}
+.row .btn{flex:1;text-align:center;font-size:15px;padding:9px}
+.dr{margin:10px 0;padding-bottom:8px;border-bottom:1px dashed #8c6a3d}
+.dr small{display:block;margin-top:3px;color:#6b4a2a}
+.dr input[type=range]{width:100%}
+#fin{font-size:13px;font-weight:bold;margin:6px 0}
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="c" width="1100" height="650"></canvas>
+
+  <div id="chips" class="panel">
+    <div class="chip">💧 <span id="vAgua">0</span></div>
+    <div class="chip">🌾 <span id="vGrano">0</span></div>
+    <div class="chip">⚙️ <span id="vHierro">0</span></div>
+    <div class="chip">🏺 <span id="vCant">0</span></div>
+  </div>
+  <div id="title" class="panel">
+    <h1>Cántaro</h1>
+    <small>Población <b id="vPop">40</b> · Bienestar <b id="vHappy">65%</b></small>
+  </div>
+  <div id="inflp" class="panel">
+    <div>Inflación<br><b id="vInfl">0.0%</b></div>
+    <canvas id="spark" width="110" height="30"></canvas>
+  </div>
+
+  <div id="build" class="panel">
+    <h3>Construir</h3>
+    <div id="bbtns" style="display:flex;flex-direction:column;gap:5px"></div>
+    <button class="btn" id="bDecree" style="margin-top:6px">🏛️ Decretos<small>Tecla C</small></button>
+    <div style="font-size:11px;margin-top:4px;line-height:1.35">Mover: WASD / flechas o clic.<br>Acción: E · Pausa: P<br>Clic derecho: cancelar</div>
+  </div>
+
+  <div id="market" class="panel">
+    <h3>Tablero del Mercado</h3>
+    <div id="mrows"></div>
+    <div class="legend"><span><b style="background:#2c9aa0"></b>Oferta</span><span><b style="background:#c0562b"></b>Demanda</span></div>
+  </div>
+  <div id="chart" class="panel">
+    <h3>Oferta vs. demanda</h3>
+    <div id="vbars"></div>
+  </div>
+
+  <div id="hint"></div>
+
+  <div id="bar" class="panel">
+    <div id="news">Bienvenido a Cántaro.</div>
+    <div id="day">Día 1</div>
+    <div class="spd">
+      <button class="btn" id="sp0">⏸</button>
+      <button class="btn on" id="sp1">▶</button>
+      <button class="btn" id="sp3">⏩</button>
+    </div>
+  </div>
+
+  <!-- Intro -->
+  <div id="intro" class="overlay">
+    <div class="card">
+      <h2>El Último Mercado</h2>
+      <p>Año 2091. Tres décadas después del Gran Colapso, llegas con cuarenta personas exhaustas a un cauce seco donde brota un pozo de agua salobre. No hay dinero, ni gobierno, ni mapa. Solo un cuaderno de cuentas y una idea: si organizas bien la producción y el intercambio, la gente puede dejar de sobrevivir y empezar a vivir.</p>
+      <ul>
+        <li>Muévete con <b>WASD</b> o las flechas (o haciendo clic en el mapa).</li>
+        <li>Pulsa <b>E</b> junto a un edificio para trabajar en él.</li>
+        <li>Construye pozos, cultivos, casas y talleres con el menú de la izquierda.</li>
+        <li>Abre el Consejo (<b>C</b>) para fijar impuestos, precios máximos, aranceles y alianzas.</li>
+        <li>Vigila el Tablero del Mercado: si la demanda supera a la oferta, los precios suben.</li>
+        <li>Sobrevive 120 días y descubre cuál de los cuatro finales alcanzas.</li>
+      </ul>
+      <p><b>¿Cómo te llamas?</b></p>
+      <input id="nameIn" type="text" maxlength="14" placeholder="Escribe tu nombre" style="width:100%;font:inherit;font-size:16px;padding:9px;border:3px solid #5a3b20;border-radius:6px;background:#fff8e3;color:#3a2616">
+      <div class="row">
+        <button class="btn" id="heroM">Empezar con atuendo rojo</button>
+        <button class="btn" id="heroT">Empezar con atuendo azul</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Decretos -->
+  <div id="decrees" class="overlay hidden">
+    <div class="card">
+      <h2>Consejo de Cántaro</h2>
+      <p>Tú presides, pero cada decreto tiene beneficiados y perjudicados.</p>
+      <div id="fin"></div>
+      <div class="dr">
+        <label>Impuesto a las ventas: <b id="taxv">10%</b></label>
+        <input type="range" id="tax" min="0" max="40" value="10">
+        <small>Muy bajo: no alcanza para guardias ni caminos. Muy alto: se produce menos y baja la legitimidad (curva de Laffer).</small>
+      </div>
+      <div class="dr"><button class="btn" id="dCap"></button><small>Protege a los consumidores en crisis, pero si es muy bajo desincentiva la producción y aparece el mercado negro.</small></div>
+      <div class="dr"><button class="btn" id="dSub"></button><small>Cuesta 12 cántaros al día y aumenta la producción de grano.</small></div>
+      <div class="dr"><button class="btn" id="dTar"></button><small>Protege a los fabricantes locales del dumping, pero encarece lo importado y genera inflación.</small></div>
+      <div class="dr"><button class="btn" id="dEmit">Emitir 150 cántaros</button><small>Dinero rápido para el tesoro, pero emitir sin respaldo provoca inflación.</small></div>
+      <div class="dr"><button class="btn" id="dLiga">Formar liga de comercio libre y justo (250 🏺)</button><small>Alianza con otros asentamientos: más producción y mejores salarios.</small></div>
+      <div class="dr"><button class="btn" id="dPact">Pactar con la Compañía del Norte</button><small>Ganancias rápidas (+400 🏺) a costa de tu autonomía. No tiene vuelta atrás.</small></div>
+      <div class="row"><button class="btn" id="dClose">Cerrar (C)</button></div>
+    </div>
+  </div>
+
+  <!-- Final -->
+  <div id="end" class="overlay hidden">
+    <div class="card">
+      <h2 id="endT"></h2>
+      <p id="endP"></p>
+      <p id="endS" style="font-weight:bold"></p>
+      <p><i>Un niño de Cántaro intercambia una moneda por una manzana: el último mercado sigue abierto.</i></p>
+      <div class="row"><button class="btn" id="again">Jugar de nuevo</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= CONSTANTES ================= */
+const TW = 64, TH = 32, N = 14, OX = 550, OY = 108, DAYLEN = 1.4, END_DAY = 120;
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+const GOODS = ['agua', 'grano', 'pan', 'hierro'];
+const LABEL = { agua: 'Agua', grano: 'Grano', pan: 'Pan', hierro: 'Hierro' };
+const ICON  = { agua: '💧', grano: '🌾', pan: '🍞', hierro: '⚙️' };
+const BASE  = { agua: 2, grano: 3, pan: 4, hierro: 8 };            // precio base en cántaros
+const NEED  = { agua: 1, grano: 0.5, pan: 0.5, hierro: 0.12 };     // consumo por persona y día
+const ELAS  = { agua: 0.15, grano: 0.4, pan: 0.6, hierro: 0.9 };   // elasticidad de la demanda
+const CAP   = { agua: 250, grano: 250, pan: 80, hierro: 150 };     // capacidad de almacén
+const DECAY = { agua: 0.98, grano: 0.99, pan: 0.8, hierro: 1 };    // pérdidas diarias
+
+// colores: [techo/superficie, pared izquierda, pared derecha]
+const BT = {
+  pozo:      { name: 'Pozo',      cost: 60,  h: 14, out: 'agua',   rate: 28, c: ['#8fd3d6', '#8a8a86', '#6a6a66'] },
+  cultivo:   { name: 'Cultivo',   cost: 40,  h: 4,  out: 'grano',  rate: 14, c: ['#7bbf4a', '#6b4a2a', '#563a20'] },
+  herreria:  { name: 'Herrería',  cost: 90,  h: 26, out: 'hierro', rate: 7,  c: ['#8a8a86', '#9a6a4a', '#7a4f35'] },
+  panaderia: { name: 'Panadería', cost: 80,  h: 24, out: 'pan',    rate: 20, c: ['#e0a560', '#d8a86a', '#b9894c'] },
+  granero:   { name: 'Granero',   cost: 100, h: 28, out: 'grano',  rate: 12, c: ['#e8c04a', '#c99a2a', '#a37a1e'] },
+  casa:      { name: 'Casa',      cost: 50,  h: 18, c: ['#b9a58a', '#c9b79c', '#a69278'] },
+  consejo:   { name: 'Consejo',   cost: 0,   h: 34, c: ['#cfc6b0', '#b8ae96', '#9c927c'] }
+};
+const BUILD_LIST = ['pozo', 'cultivo', 'herreria', 'panaderia', 'granero', 'casa'];
+const ROOF = {
+  panaderia: ['#a4512b', '#c0683e'], granero: ['#8c3f1f', '#a9552d'],
+  casa: ['#6a8a9a', '#85a5b5'], herreria: ['#5c5c5a', '#74746f'], consejo: ['#2c7f86', '#3f9aa1']
+};
+const JOBCOL = ['#c0562b', '#e8b04a', '#5a9a34', '#4a6fa5', '#8a4fa0', '#2c9aa0'];
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = (a, b) => a + Math.random() * (b - a);
+const proj = (x, y) => [OX + (x - y) * TW / 2, OY + (x + y) * TH / 2];
+
+/* ================= ESTADO ================= */
+let G = null, occ = [], npcs = [];
+const keys = {};
+const mouse = { i: -1, j: -1 };
+
+function newGame(hero, look) {
+  G = {
+    hero, look, day: 1, speed: 1, acc: 0, over: false, panel: false,
+    cant: 250,
+    stock: { agua: 90, grano: 60, pan: 20, hierro: 10 },
+    price: { ...BASE }, prevPrice: { ...BASE },
+    sup: { agua: 56, grano: 40, pan: 20, hierro: 7 },
+    dem: { agua: 40, grano: 20, pan: 20, hierro: 4.8 },
+    pop: 40, happy: 65, legit: 70, tax: 0.10,
+    cap: false, tariff: false, subsidy: false, alliance: false, pact: false,
+    emitted: 0, level: 1, ev: { sequia: 0, panic: 0, buena: 0 },
+    cpi: [100], infl: 0, dry: 0, lastRev: 0, lastCost: 0,
+    buildings: [], decos: [], sel: null,
+    px: 7.5, py: 11.5, target: null, cool: 0, walk: 0, floats: []
+  };
+  occ = Array.from({ length: N }, () => Array(N).fill(null));
+  const add = (t, i, j) => { const b = { t, i, j }; G.buildings.push(b); occ[j][i] = b; };
+  add('consejo', 10, 3); add('panaderia', 4, 4); add('herreria', 4, 10); add('granero', 10, 10);
+  add('pozo', 3, 8); add('pozo', 11, 8); add('cultivo', 2, 3); add('cultivo', 3, 3);
+  add('casa', 12, 11); add('casa', 2, 11);
+  const awn = ['#d2492f', '#e8b04a', '#2c9aa0', '#8a4fa0'];
+  [[6, 6], [8, 6], [6, 8], [8, 8]].forEach(([i, j], k) => { const d = { t: 'puesto', i, j, c: awn[k] }; G.decos.push(d); occ[j][i] = d; });
+  [[1, 1], [12, 2], [13, 6], [1, 9], [12, 12], [6, 2], [8, 12], [13, 9], [1, 6]].forEach(([i, j]) => { const d = { t: 'arbol', i, j }; G.decos.push(d); occ[j][i] = d; });
+  npcs = []; syncNpcs();
+  news(hero + ', es tu primer día: nace el trueque. Construye y observa los precios.');
+  refreshBuild(); refreshSpeed(); hud();
+}
+
+const houses = () => G.buildings.filter(b => b.t === 'casa').length;
+const popCap = () => 30 + 12 * houses();
+
+function news(msg) { if (G) { $('news').textContent = msg; } }
+
+/* ================= SIMULACIÓN ECONÓMICA ================= */
+function dayTick() {
+  const g = G; g.day++;
+  const m = { agua: 1, grano: 1, pan: 1, hierro: 1 };
+  let pm = 1 - Math.max(0, g.tax - 0.15) * 1.6;      // los impuestos altos frenan la producción
+  if (g.alliance) pm *= 1.1;
+
+  // Eventos aleatorios
+  if (g.ev.sequia > 0) { m.grano *= 0.5; m.agua *= 0.85; if (--g.ev.sequia === 0) news('La sequía termina. La cosecha se recupera.'); }
+  if (g.ev.buena > 0) { m.grano *= 1.4; g.ev.buena--; }
+  if (g.ev.panic > 0) { if (--g.ev.panic === 0) news('El pánico de compra se calma.'); }
+  const busy = g.ev.sequia || g.ev.panic || g.ev.buena;
+  if (!busy && Math.random() < 0.05) {
+    const r = Math.random();
+    if (r < 0.3) { g.ev.sequia = 8; news('¡Sequía! La cosecha cae y el grano se encarece.'); }
+    else if (r < 0.55) { g.ev.panic = 6; news('Un comerciante acapara semillas y corre un rumor: compra de pánico.'); }
+    else if (r < 0.8) { const n = Math.min(12, popCap() - Math.round(g.pop)); if (n > 0) { g.pop += n; news('Llegan ' + n + ' refugiados nuevos: sube la demanda de agua y pan.'); } }
+    else { g.ev.buena = 5; news('¡La cosecha de grano sube!'); }
+  }
+
+  // Historia: la Compañía del Norte
+  const dump = (!g.alliance && !g.pact && !g.tariff) ? (g.day >= 75 ? 2 : (g.day >= 45 ? 1 : 0)) : 0;
+  if (g.day === 5) news('Nace el cántaro: un vale canjeable por agua de la reserva común.');
+  if (g.day === 45) news('La Compañía del Norte inunda el mercado con pan y hierro baratos...');
+  if (g.day === 75) news(dump === 2 ? 'Los talleres locales quiebran y la Compañía sube los precios.' : 'Cántaro resistió el dumping de la Compañía del Norte.');
+  if (dump === 2) { m.pan *= 0.3; m.hierro *= 0.3; }
+
+  // Producción
+  const prod = { agua: 0, grano: 0, pan: 0, hierro: 0 };
+  let bakeries = 0;
+  for (const b of g.buildings) {
+    const d = BT[b.t]; if (!d.out) continue;
+    if (d.out === 'pan') { bakeries++; continue; }
+    prod[d.out] += d.rate * m[d.out] * pm;
+  }
+  if (g.subsidy) prod.grano *= 1.25;
+  if (g.cap) prod.agua *= 0.65;
+  g.stock.grano += prod.grano;
+  const useG = Math.min(g.stock.grano * 0.5, bakeries * BT.panaderia.rate * m.pan * pm / 2);
+  prod.pan = useG * 2; g.stock.grano -= useG;
+  if (dump === 1) { prod.pan += 14; prod.hierro += 4; }       // importaciones baratas
+  g.stock.pan += prod.pan; g.stock.agua += prod.agua; g.stock.hierro += prod.hierro;
+
+  // Demanda, ventas y precios
+  let rev = 0, short = 0, w = 0;
+  for (const k of GOODS) {
+    g.prevPrice[k] = g.price[k];
+    const panic = (g.ev.panic > 0 && k !== 'hierro') ? 1.5 : 1;
+    const d = g.pop * NEED[k] * panic * Math.pow(BASE[k] * g.level / g.price[k], ELAS[k]);
+    g.dem[k] = d; g.sup[k] = prod[k];
+    const avail = g.stock[k], s = Math.min(avail, d);
+    g.stock[k] -= s; rev += s * g.price[k] * g.tax;
+    if (k !== 'hierro') { const wt = k === 'agua' ? 2 : 1; short += wt * (d - s) / Math.max(d, 1); w += wt; }
+    const cover = avail / Math.max(d, 1);                      // días de existencias
+    let p = g.price[k] * (1 + 0.14 * clamp((3 - cover) / 3, -1, 1));
+    p += (BASE[k] * g.level - p) * 0.03;
+    p = clamp(p, BASE[k] * g.level * 0.4, BASE[k] * g.level * 5);
+    if (k === 'agua' && g.cap) p = Math.min(p, BASE.agua * g.level * 0.6);
+    g.price[k] = p;
+    g.stock[k] = Math.min(g.stock[k] * DECAY[k], CAP[k]);
+  }
+  if (g.cap && g.stock.agua < g.dem.agua && g.day % 7 === 0) news('Aparece un mercado negro de agua: el precio máximo causa escasez.');
+
+  // Tesoro del Consejo
+  const cost = g.pop * 0.2 + g.buildings.length * 0.5 + (g.subsidy ? 12 : 0) + (g.alliance ? 3 : 0);
+  g.lastRev = rev + (g.tariff ? 3 : 0); g.lastCost = cost;
+  g.cant += g.lastRev - cost;
+  if (g.cant < 0 && g.day % 5 === 0) news('El tesoro está en números rojos: baja la legitimidad.');
+
+  // Nivel de precios (inflación por emisión de moneda y aranceles)
+  const lvlTarget = 1 + g.emitted / (g.pop * 70);
+  g.level += (lvlTarget - g.level) * 0.08 + (g.tariff ? 0.003 : 0);
+
+  // Bienestar
+  const basket = GOODS.reduce((a, k) => a + NEED[k] * g.price[k], 0);
+  const baseBasket = GOODS.reduce((a, k) => a + NEED[k] * BASE[k], 0);
+  const wage = (14 + g.buildings.length * 0.08) * (g.alliance ? 1.08 : 1) * (1 - g.tax * 0.6);
+  const affS = clamp((wage / basket - 0.8) / 1.6, 0, 1) * 100;       // poder adquisitivo
+  const supS = 100 * (1 - clamp(short / w * 1.6, 0, 1));             // abasto
+  g.legit = clamp(g.legit + (g.happy - 55) * 0.02 - (g.tax > 0.25 ? (g.tax - 0.25) * 8 : 0) + (g.cant < 0 ? -1 : 0.05), 0, 100);
+  g.happy += (0.4 * affS + 0.4 * supS + 0.2 * g.legit - g.happy) * 0.2;
+
+  // Población
+  if (g.happy > 62 && g.pop < popCap()) g.pop = Math.min(popCap(), g.pop + 0.6);
+  if (g.happy < 35) g.pop -= 0.8;
+  syncNpcs();
+
+  // Inflación (índice de canasta básica)
+  g.cpi.push(basket / baseBasket * 100); if (g.cpi.length > 80) g.cpi.shift();
+  g.infl = (g.cpi[g.cpi.length - 1] / g.cpi[Math.max(0, g.cpi.length - 31)] - 1) * 100;
+
+  if (g.stock.agua < 1) g.dry++; else g.dry = 0;
+  hud();
+  if (g.day >= END_DAY || g.cant < -150 || g.pop < 12 || g.dry >= 8) endGame();
+}
+
+function ending() {
+  const g = G;
+  if (g.cant < -150 || g.pop < 12 || g.dry >= 8) return 'reserva';
+  if (g.pact) return 'imperio';
+  if (g.alliance && g.happy >= 60 && g.pop >= 80) return 'ciudad';
+  if (g.happy >= 40) return 'equilibrio';
+  return 'reserva';
+}
+const ENDINGS = {
+  ciudad: ['Ciudad Libre', 'Cántaro se convirtió en el centro de una red cooperativa de asentamientos. El comercio justo y las alianzas trajeron prosperidad para todos.'],
+  imperio: ['Imperio Mercantil', 'Pactaste con la Compañía del Norte y te convertiste en el nuevo monopolio que combatías. Hay ganancias rápidas, pero a costa de tu autonomía.'],
+  reserva: ['Reserva Vacía', 'Una mala gestión de los recursos dejó al asentamiento sin agua ni crédito. Los habitantes abandonan Cántaro.'],
+  equilibrio: ['Equilibrio Frágil', 'Lograste estabilidad económica sin dominar a nadie, aunque con un costo moral y político. Es el final más difícil.']
+};
+function endGame() {
+  G.over = true; G.panel = true;
+  const e = ENDINGS[ending()];
+  $('endT').textContent = e[0]; $('endP').textContent = e[1];
+  $('endS').textContent = `Día ${G.day} · Población ${Math.round(G.pop)} · Bienestar ${Math.round(G.happy)}% · Tesoro ${Math.round(G.cant)} cántaros`;
+  $('end').classList.remove('hidden');
+}
+
+/* ================= HUD ================= */
+function hud() {
+  const g = G;
+  $('vAgua').textContent = Math.round(g.stock.agua);
+  $('vGrano').textContent = Math.round(g.stock.grano);
+  $('vHierro').textContent = Math.round(g.stock.hierro);
+  $('vCant').textContent = Math.round(g.cant);
+  $('vPop').textContent = Math.round(g.pop) + '/' + popCap();
+  $('vHappy').textContent = Math.round(g.happy) + '%';
+  $('vInfl').textContent = (g.infl >= 0 ? '+' : '') + g.infl.toFixed(1) + '%';
+  $('day').textContent = 'Día ' + g.day + '/' + END_DAY;
+  drawSpark(); renderMarket(); refreshBuild();
+}
+function drawSpark() {
+  const c = $('spark'), x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height);
+  const h = G.cpi.slice(-40), mn = Math.min(...h, 95), mx = Math.max(...h, 105);
+  x.strokeStyle = '#a4512b'; x.lineWidth = 2; x.beginPath();
+  h.forEach((v, i) => { const px = i / Math.max(h.length - 1, 1) * c.width, py = c.height - 2 - (v - mn) / (mx - mn) * (c.height - 4); i ? x.lineTo(px, py) : x.moveTo(px, py); });
+  x.stroke();
+}
+function renderMarket() {
+  let h = '';
+  for (const k of GOODS) {
+    const mx = Math.max(G.sup[k], G.dem[k], 1) * 1.15;
+    const up = G.price[k] > G.prevPrice[k] + 0.01 ? '▲' : (G.price[k] < G.prevPrice[k] - 0.01 ? '▼' : '–');
+    const cls = up === '▲' ? 'up' : (up === '▼' ? 'down' : '');
+    const cover = G.stock[k] / Math.max(G.dem[k], 1);
+    let al = '';
+    if (cover < 0.5 && G.dem[k] > G.sup[k] * 1.1) al = '<em class="bad">escasez</em>';
+    else if (cover > 5) al = '<em class="ok">excedente</em>';
+    h += `<div class="mrow"><span>${ICON[k]} ${LABEL[k]}${al}</span><span class="pr">${G.price[k].toFixed(1)} 🏺 <i class="${cls}">${up}</i></span></div>
+          <div class="bar o"><span style="width:${G.sup[k] / mx * 100}%"></span></div>
+          <div class="bar d"><span style="width:${G.dem[k] / mx * 100}%"></span></div>`;
+  }
+  $('mrows').innerHTML = h;
+  const gm = Math.max(...GOODS.map(k => Math.max(G.sup[k], G.dem[k])), 1);
+  $('vbars').innerHTML = GOODS.map(k => `<div class="grp"><div class="vb"><span class="o" style="height:${G.sup[k] / gm * 100}%"></span><span class="d" style="height:${G.dem[k] / gm * 100}%"></span></div><small>${LABEL[k]}</small></div>`).join('');
+}
+function refreshBuild() {
+  const box = $('bbtns');
+  if (!box.children.length) {
+    BUILD_LIST.forEach(t => {
+      const b = document.createElement('button'); b.className = 'btn'; b.dataset.t = t;
+      b.addEventListener('click', () => { if (!G || G.over) return; G.sel = (G.sel === t ? null : t); refreshBuild(); });
+      box.appendChild(b);
+    });
+  }
+  [...box.children].forEach(b => {
+    const t = b.dataset.t, d = BT[t];
+    b.innerHTML = `${d.name}<small>${d.cost} 🏺${d.out ? ' · ' + ICON[d.out === 'pan' ? 'pan' : d.out] : ' · +12 cupos'}</small>`;
+    b.classList.toggle('on', !!G && G.sel === t);
+    b.disabled = !!G && G.cant < d.cost;
+  });
+}
+function refreshSpeed() {
+  [['sp0', 0], ['sp1', 1], ['sp3', 3]].forEach(([id, s]) => $(id).classList.toggle('on', G && G.speed === s));
+}
+
+/* ================= CONSTRUIR E INTERACTUAR ================= */
+const blocked = (x, y) => { const i = Math.floor(x), j = Math.floor(y); return i < 0 || j < 1 || i >= N || j >= N || !!occ[j][i]; };
+
+function tryBuild(t, i, j) {
+  const d = BT[t];
+  if (j < 1) { news('No se puede construir sobre el río.'); return; }
+  if (occ[j][i]) { news('Ese terreno está ocupado.'); return; }
+  if (Math.floor(G.px) === i && Math.floor(G.py) === j) { news('Apártate para construir ahí.'); return; }
+  if (G.cant < d.cost) { news('Fondos insuficientes: necesitas ' + d.cost + ' cántaros.'); return; }
+  G.cant -= d.cost;
+  const b = { t, i, j }; G.buildings.push(b); occ[j][i] = b;
+  news(d.name + ' construido.'); hud();
+}
+
+const ACT = {
+  pozo:      { txt: 'Cavar en el pozo',      fn: () => { G.stock.agua += 12; return '+12 💧'; } },
+  cultivo:   { txt: 'Cultivar la parcela',   fn: () => { G.stock.grano += 10; return '+10 🌾'; } },
+  granero:   { txt: 'Ayudar en el granero',  fn: () => { G.stock.grano += 8; return '+8 🌾'; } },
+  herreria:  { txt: 'Forjar herramientas',   fn: () => { G.stock.hierro += 3; return '+3 ⚙️'; } },
+  panaderia: { txt: 'Amasar pan',            fn: () => { const u = Math.min(3, G.stock.grano); G.stock.grano -= u; G.stock.pan += u * 2; return u ? '+' + (u * 2) + ' 🍞' : 'Sin grano'; } },
+  consejo:   { txt: 'Abrir el Consejo',      fn: () => { openDecrees(); return ''; } }
+};
+function nearest() {
+  let best = null, bd = 1.8;
+  for (const b of G.buildings) {
+    if (!ACT[b.t]) continue;
+    const d = Math.hypot(b.i + 0.5 - G.px, b.j + 0.5 - G.py);
+    if (d < bd) { bd = d; best = b; }
+  }
+  return best;
+}
+function interact() {
+  if (G.cool > 0) return;
+  const b = nearest(); if (!b) return;
+  G.cool = 0.6;
+  const txt = ACT[b.t].fn();
+  if (txt) G.floats.push({ x: G.px, y: G.py, txt, life: 1.2 });
+  hud();
+}
+
+/* ================= DECRETOS ================= */
+function openDecrees() { if (!G || G.over) return; G.panel = true; refreshDecrees(); $('decrees').classList.remove('hidden'); }
+function closeDecrees() { if (!G) return; $('decrees').classList.add('hidden'); if (!G.over) G.panel = false; }
+function refreshDecrees() {
+  const g = G;
+  $('tax').value = Math.round(g.tax * 100); $('taxv').textContent = Math.round(g.tax * 100) + '%';
+  $('dCap').textContent = 'Precio máximo al agua: ' + (g.cap ? 'ACTIVO' : 'inactivo');
+  $('dSub').textContent = 'Subsidio a los agricultores: ' + (g.subsidy ? 'ACTIVO' : 'inactivo');
+  $('dTar').textContent = 'Aranceles a las importaciones: ' + (g.tariff ? 'ACTIVOS' : 'inactivos');
+  $('dLiga').disabled = g.alliance || g.pact || g.cant < 250;
+  $('dLiga').textContent = g.alliance ? 'Liga de comercio libre: formada ✔' : 'Formar liga de comercio libre y justo (250 🏺)';
+  $('dPact').disabled = g.pact || g.alliance || g.day < 45;
+  $('dPact').textContent = g.pact ? 'Pacto con la Compañía: firmado' : (g.day < 45 ? 'Pactar con la Compañía (disponible desde el día 45)' : 'Pactar con la Compañía del Norte');
+  $('fin').textContent = `Ayer: ingresos ${g.lastRev.toFixed(0)} 🏺 · gastos ${g.lastCost.toFixed(0)} 🏺 · tesoro ${Math.round(g.cant)} 🏺 · legitimidad ${Math.round(g.legit)}%`;
+}
+$('tax').addEventListener('input', e => { G.tax = e.target.value / 100; refreshDecrees(); });
+$('dCap').addEventListener('click', () => { G.cap = !G.cap; news(G.cap ? 'Decreto: precio máximo al agua.' : 'Se retira el precio máximo al agua.'); refreshDecrees(); });
+$('dSub').addEventListener('click', () => { G.subsidy = !G.subsidy; news(G.subsidy ? 'Decreto: subsidio a los agricultores.' : 'Se retira el subsidio.'); refreshDecrees(); });
+$('dTar').addEventListener('click', () => { G.tariff = !G.tariff; news(G.tariff ? 'Decreto: aranceles. Los productos importados se encarecen.' : 'Se eliminan los aranceles.'); refreshDecrees(); });
+$('dEmit').addEventListener('click', () => { G.cant += 150; G.emitted += 150; news('Emites 150 cántaros sin respaldo: cuidado con la inflación.'); hud(); refreshDecrees(); });
+$('dLiga').addEventListener('click', () => { if (G.cant >= 250) { G.cant -= 250; G.alliance = true; G.legit = Math.min(100, G.legit + 5); news('Nace la liga de comercio libre y justo.'); hud(); refreshDecrees(); } });
+$('dPact').addEventListener('click', () => { G.pact = true; G.cant += 400; news('Pactas con la Compañía del Norte. Llegan ganancias rápidas.'); hud(); refreshDecrees(); });
+$('dClose').addEventListener('click', closeDecrees);
+$('bDecree').addEventListener('click', openDecrees);
+
+/* ================= ENTRADAS ================= */
+['sp0', 'sp1', 'sp3'].forEach((id, k) => $(id).addEventListener('click', () => { if (G) { G.speed = [0, 1, 3][k]; refreshSpeed(); } }));
+$('heroM').addEventListener('click', () => start('rojo'));
+$('heroT').addEventListener('click', () => start('azul'));
+$('again').addEventListener('click', () => { $('end').classList.add('hidden'); $('intro').classList.remove('hidden'); G = null; });
+function start(look) {
+  const name = $('nameIn').value.trim().slice(0, 14) || (look === 'rojo' ? 'Mara' : 'Tomás');
+  $('intro').classList.add('hidden'); newGame(name, look);
+}
+
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  keys[k] = true;
+  if (!G || G.over) return;
+  if (k === 'c') G.panel ? closeDecrees() : openDecrees();
+  if (k === 'escape') { if (G.panel) closeDecrees(); else { G.sel = null; refreshBuild(); } }
+  if (G.panel) return;
+  if (k === 'e') interact();
+  if (k === 'p') { G.speed = G.speed === 0 ? 1 : 0; refreshSpeed(); }
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+function updMouse(e) {
+  const r = cv.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * cv.width / r.width, my = (e.clientY - r.top) * cv.height / r.height;
+  const dx = (mx - OX) / (TW / 2), dy = (my - OY) / (TH / 2);
+  mouse.i = Math.floor((dx + dy) / 2); mouse.j = Math.floor((dy - dx) / 2);
+}
+cv.addEventListener('mousemove', updMouse);
+cv.addEventListener('click', e => {
+  if (!G || G.over || G.panel) return;
+  updMouse(e);
+  const { i, j } = mouse; if (i < 0 || j < 0 || i >= N || j >= N) return;
+  if (G.sel) tryBuild(G.sel, i, j);
+  else if (!occ[j][i] && j >= 1) G.target = [i + 0.5, j + 0.5];
+});
+cv.addEventListener('contextmenu', e => { e.preventDefault(); if (G) { G.sel = null; refreshBuild(); } });
+
+function fit() { $('game').style.setProperty('--s', Math.min(innerWidth / 1110, innerHeight / 660)); }
+addEventListener('resize', fit); fit();
+
+/* ================= PERSONAJES ================= */
+function syncNpcs() {
+  const want = clamp(Math.round(G.pop / 3), 6, 24);
+  while (npcs.length < want) {
+    let x, y, tries = 0;
+    do { x = rnd(4, 11); y = rnd(4, 12); tries++; } while (blocked(x, y) && tries < 30);
+    npcs.push({ x, y, t: null, wait: rnd(0, 2), sp: rnd(0.7, 1.2), col: JOBCOL[npcs.length % JOBCOL.length] });
+  }
+  while (npcs.length > want) npcs.pop();
+}
+function updNpc(n, dt) {
+  if (n.wait > 0) { n.wait -= dt; return; }
+  if (!n.t) {
+    const tx = clamp(n.x + rnd(-3, 3), 1, N - 1), ty = clamp(n.y + rnd(-3, 3), 1.2, N - 1);
+    if (!blocked(tx, ty)) n.t = [tx, ty]; else n.wait = 0.2;
+    return;
+  }
+  const dx = n.t[0] - n.x, dy = n.t[1] - n.y, d = Math.hypot(dx, dy);
+  if (d < 0.1) { n.t = null; n.wait = rnd(0.5, 3); return; }
+  const nx = n.x + dx / d * n.sp * dt, ny = n.y + dy / d * n.sp * dt;
+  if (blocked(nx, ny)) { n.t = null; n.wait = 0.3; return; }
+  n.x = nx; n.y = ny;
+}
+function movePlayer(dt) {
+  let dx = 0, dy = 0;
+  if (keys.w || keys.arrowup) { dx -= 1; dy -= 1; }
+  if (keys.s || keys.arrowdown) { dx += 1; dy += 1; }
+  if (keys.a || keys.arrowleft) { dx -= 1; dy += 1; }
+  if (keys.d || keys.arrowright) { dx += 1; dy -= 1; }
+  if (dx || dy) G.target = null;
+  else if (G.target) {
+    const tx = G.target[0] - G.px, ty = G.target[1] - G.py, d = Math.hypot(tx, ty);
+    if (d < 0.1) { G.target = null; return false; }
+    dx = tx / d; dy = ty / d;
+  }
+  if (!dx && !dy) return false;
+  const l = Math.hypot(dx, dy); dx /= l; dy /= l;
+  const nx = G.px + dx * 3.4 * dt, ny = G.py + dy * 3.4 * dt; let moved = false;
+  if (!blocked(nx, G.py)) { G.px = nx; moved = true; }
+  if (!blocked(G.px, ny)) { G.py = ny; moved = true; }
+  if (!moved) G.target = null;
+  return moved;
+}
+
+/* ================= BUCLE ================= */
+let last = 0, moving = false;
+function frame(ts) {
+  const dt = Math.min(0.05, (ts - last) / 1000 || 0); last = ts;
+  if (G) {
+    if (!G.panel) {
+      moving = movePlayer(dt);
+      npcs.forEach(n => updNpc(n, dt));
+      G.cool = Math.max(0, G.cool - dt);
+      if (G.speed > 0) { G.acc += dt * G.speed; if (G.acc >= DAYLEN) { G.acc -= DAYLEN; dayTick(); } }
+    }
+    G.floats.forEach(f => f.life -= dt); G.floats = G.floats.filter(f => f.life > 0);
+  }
+  draw(ts / 1000);
+  requestAnimationFrame(frame);
+}
+
+/* ================= DIBUJO ISOMÉTRICO ================= */
+function poly(pts, fill) {
+  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.stroke();
+}
+function diamond(i, j, fill, z = 0) {
+  const A = proj(i, j), B = proj(i + 1, j), C = proj(i + 1, j + 1), D = proj(i, j + 1);
+  poly([[A[0], A[1] - z], [B[0], B[1] - z], [C[0], C[1] - z], [D[0], D[1] - z]], fill);
+}
+function box(i, j, h, cols, inset = 0.1) {
+  const a = i + inset, b = j + inset, c = i + 1 - inset, d = j + 1 - inset;
+  const A = proj(a, b), B = proj(c, b), C = proj(c, d), D = proj(a, d);
+  poly([[D[0], D[1]], [C[0], C[1]], [C[0], C[1] - h], [D[0], D[1] - h]], cols[1]);
+  poly([[C[0], C[1]], [B[0], B[1]], [B[0], B[1] - h], [C[0], C[1] - h]], cols[2]);
+  poly([[A[0], A[1] - h], [B[0], B[1] - h], [C[0], C[1] - h], [D[0], D[1] - h]], cols[0]);
+  return [(A[0] + C[0]) / 2, (A[1] + C[1]) / 2 - h];
+}
+function roof(i, j, h, inset, r, rc) {
+  const a = i + inset, b = j + inset, c = i + 1 - inset, d = j + 1 - inset;
+  const A = proj(a, b), B = proj(c, b), C = proj(c, d), D = proj(a, d);
+  const M1 = [(A[0] + D[0]) / 2, (A[1] + D[1]) / 2 - h - r], M2 = [(B[0] + C[0]) / 2, (B[1] + C[1]) / 2 - h - r];
+  poly([[A[0], A[1] - h], [B[0], B[1] - h], M2, M1], rc[1]);
+  poly([[C[0], C[1] - h], [B[0], B[1] - h], M2], rc[0]);
+  poly([[D[0], D[1] - h], [C[0], C[1] - h], M2, M1], rc[0]);
+}
+function bubble(x, y, txt) {
+  ctx.font = 'bold 12px "Trebuchet MS",sans-serif';
+  const w = ctx.measureText(txt).width + 14, h = 18, x0 = x - w / 2, y0 = y - h - 6, r = 6;
+  ctx.fillStyle = '#fff7df'; ctx.strokeStyle = '#3a2616'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x0 + r, y0); ctx.arcTo(x0 + w, y0, x0 + w, y0 + h, r); ctx.arcTo(x0 + w, y0 + h, x0, y0 + h, r);
+  ctx.lineTo(x + 5, y0 + h); ctx.lineTo(x, y0 + h + 6); ctx.lineTo(x - 5, y0 + h);
+  ctx.arcTo(x0, y0 + h, x0, y0, r); ctx.arcTo(x0, y0, x0 + w, y0, r);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#3a2616'; ctx.textAlign = 'center'; ctx.fillText(txt, x, y0 + 13);
+}
+function person(x, y, col, hair, sc, t, mv) {
+  const [sx, sy] = proj(x, y), bob = mv ? Math.abs(Math.sin(t * 10)) * 2 : 0;
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(sx, sy, 6 * sc, 3 * sc, 0, 0, 7); ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = '#3a2616';
+  ctx.fillStyle = col; ctx.beginPath(); ctx.rect(sx - 4 * sc, sy - 13 * sc - bob, 8 * sc, 11 * sc); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f0c89a'; ctx.beginPath(); ctx.arc(sx, sy - 18 * sc - bob, 5 * sc, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = hair; ctx.beginPath(); ctx.arc(sx, sy - 19.5 * sc - bob, 5 * sc, Math.PI, 0); ctx.fill();
+}
+
+function drawBuilding(b, t, bubbles) {
+  const d = BT[b.t]; let top;
+  if (b.t === 'cultivo') {
+    top = box(b.i, b.j, d.h, d.c, 0.05);
+    ctx.strokeStyle = '#3f7a2a'; ctx.lineWidth = 2;
+    for (let k = 1; k <= 3; k++) {
+      const P = proj(b.i + 0.1, b.j + k / 4), Q = proj(b.i + 0.9, b.j + k / 4);
+      ctx.beginPath(); ctx.moveTo(P[0], P[1] - d.h); ctx.lineTo(Q[0], Q[1] - d.h); ctx.stroke();
+    }
+    ctx.strokeStyle = '#3a2616';
+  } else if (b.t === 'pozo') {
+    top = box(b.i, b.j, d.h, d.c, 0.2);
+    ctx.fillStyle = '#3fb3b8'; ctx.beginPath(); ctx.ellipse(top[0], top[1], 11, 5, 0, 0, 7); ctx.fill(); ctx.stroke();
+  } else {
+    top = box(b.i, b.j, d.h, d.c, 0.08);
+    if (ROOF[b.t]) { roof(b.i, b.j, d.h, 0.08, b.t === 'herreria' ? 6 : 12, ROOF[b.t]); top = [top[0], top[1] - 12]; }
+    if (b.t === 'herreria') {
+      const cx = top[0] + 10, cy = top[1] + 10;
+      ctx.fillStyle = '#4a4a48'; ctx.fillRect(cx - 4, cy - 18, 8, 18); ctx.strokeRect(cx - 4, cy - 18, 8, 18);
+      for (let k = 0; k < 3; k++) {
+        const ph = (t * 0.5 + k / 3) % 1;
+        ctx.fillStyle = 'rgba(90,90,90,' + (0.6 * (1 - ph)).toFixed(2) + ')';
+        ctx.beginPath(); ctx.arc(cx + ph * 6, cy - 22 - ph * 28, 3 + ph * 5, 0, 7); ctx.fill();
+      }
+    }
+    if (b.t === 'consejo') {
+      ctx.strokeStyle = '#3a2616'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(top[0], top[1] - 22); ctx.stroke();
+      poly([[top[0], top[1] - 22], [top[0] + 14, top[1] - 17], [top[0], top[1] - 12]], '#d2492f');
+    }
+  }
+  ctx.lineWidth = 1.5;
+  b.top = top;
+  const show = { pozo: 'agua', panaderia: 'pan', herreria: 'hierro', granero: 'grano' }[b.t];
+  if (show) bubbles.push([top[0], top[1] - 4, LABEL[show] + ': ' + Math.round(G.price[show])]);
+}
+function drawDeco(d) {
+  if (d.t === 'arbol') {
+    const [sx, sy] = proj(d.i + 0.5, d.j + 0.5);
+    ctx.fillStyle = '#6b4423'; ctx.fillRect(sx - 3, sy - 16, 6, 16); ctx.strokeRect(sx - 3, sy - 16, 6, 16);
+    ctx.fillStyle = '#4f9a3a';
+    [[0, -30, 14], [-9, -22, 10], [9, -22, 10]].forEach(([ox, oy, r]) => { ctx.beginPath(); ctx.arc(sx + ox, sy + oy, r, 0, 7); ctx.fill(); ctx.stroke(); });
+  } else {
+    box(d.i, d.j, 8, ['#c9a36a', '#a57e48', '#8a6636'], 0.18);
+    const z = 26, P = [proj(d.i + 0.1, d.j + 0.1), proj(d.i + 0.9, d.j + 0.1), proj(d.i + 0.9, d.j + 0.9), proj(d.i + 0.1, d.j + 0.9)];
+    ctx.lineWidth = 2;
+    [P[1], P[2], P[3]].forEach(p => { ctx.beginPath(); ctx.moveTo(p[0], p[1] - 8); ctx.lineTo(p[0], p[1] - z); ctx.stroke(); });
+    ctx.lineWidth = 1.5;
+    poly(P.map(p => [p[0], p[1] - z]), d.c);
+    ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    [0.33, 0.66].forEach(f => { const a = proj(d.i + 0.1 + 0.8 * f, d.j + 0.1), b = proj(d.i + 0.1 + 0.8 * f, d.j + 0.9); ctx.beginPath(); ctx.moveTo(a[0], a[1] - z); ctx.lineTo(b[0], b[1] - z); ctx.stroke(); });
+    ctx.strokeStyle = '#3a2616';
+  }
+}
+
+function draw(t) {
+  const gr = ctx.createLinearGradient(0, 0, 0, cv.height);
+  gr.addColorStop(0, '#e8c58a'); gr.addColorStop(1, '#c9965a');
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!G) return;
+  ctx.lineJoin = 'round'; ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(58,38,22,.35)';
+
+  // Suelo
+  const sand = ['#ebcf91', '#e5c585', '#efd59c'];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    let c = sand[(i * 7 + j * 13) % 3];
+    if (j === 0) c = (i % 2 ? '#3fb3b8' : '#37a6ab');
+    else if (i >= 5 && i <= 8 && j >= 5 && j <= 8) c = '#d9b27a';
+    else if (i === 7 || j === 7) c = '#cfa66a';
+    diamond(i, j, c);
+  }
+  // Cursor de construcción
+  if (G.sel && mouse.i >= 0 && mouse.j >= 0 && mouse.i < N && mouse.j < N) {
+    const ok = mouse.j >= 1 && !occ[mouse.j][mouse.i] && G.cant >= BT[G.sel].cost;
+    diamond(mouse.i, mouse.j, ok ? 'rgba(80,200,90,.6)' : 'rgba(210,70,50,.6)');
+  } else if (G.target) diamond(Math.floor(G.target[0]), Math.floor(G.target[1]), 'rgba(255,255,255,.35)');
+
+  // Objetos ordenados por profundidad
+  ctx.strokeStyle = '#3a2616';
+  const list = [], bubbles = [];
+  G.buildings.forEach(b => list.push({ d: b.i + b.j + 1, f: () => drawBuilding(b, t, bubbles) }));
+  G.decos.forEach(o => list.push({ d: o.i + o.j + 1, f: () => drawDeco(o) }));
+  npcs.forEach(n => list.push({ d: n.x + n.y, f: () => person(n.x, n.y, n.col, '#4a2f1a', 0.85, t + n.sp * 3, !n.t ? false : n.wait <= 0) }));
+  list.push({ d: G.px + G.py, f: () => {
+    person(G.px, G.py, G.look === 'rojo' ? '#d2492f' : '#2f6fb0', G.look === 'rojo' ? '#6b3a1e' : '#222', 1.2, t, moving);
+    const [sx, sy] = proj(G.px, G.py);
+    ctx.font = 'bold 11px "Trebuchet MS",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff7df'; ctx.fillText(G.hero, sx, sy - 36); } });
+  list.sort((a, b) => a.d - b.d).forEach(o => o.f());
+  bubbles.forEach(b => bubble(b[0], b[1], b[2]));
+
+  // Textos flotantes
+  G.floats.forEach(f => {
+    const [sx, sy] = proj(f.x, f.y);
+    ctx.globalAlpha = Math.min(1, f.life); ctx.font = 'bold 14px "Trebuchet MS",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff7df'; ctx.strokeStyle = '#3a2616'; ctx.lineWidth = 3;
+    ctx.strokeText(f.txt, sx, sy - 50 - (1.2 - f.life) * 25); ctx.fillText(f.txt, sx, sy - 50 - (1.2 - f.life) * 25);
+    ctx.globalAlpha = 1;
+  });
+
+  // Pista de interacción
+  const hint = $('hint'), nb = !G.panel && nearest();
+  if (nb) { hint.style.display = 'block'; hint.textContent = '[E] ' + ACT[nb.t].txt; } else hint.style.display = 'none';
+}
+
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html> GT6S
